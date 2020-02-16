@@ -58,7 +58,7 @@ const fetchCoordsByIP = function (ip, callback) {
  */
 const fetchISSFlyOverTimes = function (coords, callback) {
   request(`http://api.open-notify.org/iss-pass.json?lat=${coords.latitude}&lon=${coords.longitude}`, function (error, response, body) {
-  
+
     if (error) {
       callback(error, null);
       return;
@@ -75,4 +75,59 @@ const fetchISSFlyOverTimes = function (coords, callback) {
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
+
+
+
+
+
+const nextISSTimesForMyLocation = function (callback) {
+  request('https://api.ipify.org/?format=json', function (error, response, body) {
+    if (error) return callback(error, null);
+
+    if (response.statusCode !== 200) {
+      callback(Error(`Status Code ${response.statusCode} when fetching IP: ${body}`), null);
+      return;
+    }
+
+    const ip = JSON.parse(body).ip;
+    //callback(null, ip);
+    request(`https://ipvigilante.com/json/${ip}`, function (error, response, body) {
+      console.error('error:', error); // Print the error if one occurred
+      if (error) {
+        callback(error, null);
+        return;
+      }
+
+      console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
+
+      if (response.statusCode !== 200) {
+        const msg = `Status Code ${response.statusCode} when fetching coordinates for IP. Response: ${body}`;
+        callback(Error(msg), null);
+        return;
+      }
+
+      const data = JSON.parse(body);
+      const coordinates = { "latitude": data['data']['latitude'], "longitude": data['data']['longitude'] };
+      //callback(null, coordinates);
+      request(`http://api.open-notify.org/iss-pass.json?lat=${coordinates.latitude}&lon=${coordinates.longitude}`, function (error, response, body) {
+
+        if (error) {
+          callback(error, null);
+          return;
+        }
+
+        if (response.statusCode !== 200) {
+          const msg = `Status Code ${response.statusCode} when fetching fly over pass times. Response: ${body}`;
+          callback(Error(msg), null);
+          return;
+        }
+
+        const data = JSON.parse(body).response;
+        console.log(data);
+      });
+    });
+  });
+};
+
+// module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes, nextISSTimesForMyLocation };
+module.exports = {nextISSTimesForMyLocation };
